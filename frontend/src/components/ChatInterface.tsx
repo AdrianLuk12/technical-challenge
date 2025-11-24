@@ -38,9 +38,19 @@ export default function ChatInterface({ onDocumentUpdate, onDocumentChanges }: C
   const streamingTextRef = useRef<string>('')
   const updateTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const assistantMessageIdRef = useRef<string | null>(null)
+  const readerRef = useRef<ReadableStreamDefaultReader<Uint8Array> | null>(null)
 
   // Get API URL from environment variable
   const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
+
+  // Cleanup effect for timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (updateTimeoutRef.current) {
+        clearTimeout(updateTimeoutRef.current)
+      }
+    }
+  }, [])
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -138,6 +148,9 @@ export default function ChatInterface({ onDocumentUpdate, onDocumentChanges }: C
         throw new Error('No reader available')
       }
 
+      // Store reader ref for cleanup
+      readerRef.current = reader
+
       while (true) {
         const { done, value } = await reader.read()
         if (done) break
@@ -209,6 +222,16 @@ export default function ChatInterface({ onDocumentUpdate, onDocumentChanges }: C
         isStreaming: false
       })
     } finally {
+      // Cancel reader to prevent resource leak
+      if (readerRef.current) {
+        try {
+          await readerRef.current.cancel()
+        } catch (e) {
+          // Ignore cancellation errors
+        }
+        readerRef.current = null
+      }
+
       setIsLoading(false)
 
       // Clean up refs

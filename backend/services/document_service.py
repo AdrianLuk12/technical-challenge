@@ -257,8 +257,6 @@ Date: _______________                   Date: _______________
                 old_line = line
 
                 if edit_type == 'update_field':
-                    updated_line = line
-
                     # Handle different field types
                     if 'effective' in field_name.lower() or 'date' in field_name.lower():
                         # Replace date patterns

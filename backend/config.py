@@ -21,7 +21,7 @@ class Config:
 
     # Server
     HOST = os.getenv('HOST', '0.0.0.0')
-    PORT = int(os.getenv('FLASK_RUN_PORT', 5001))
+    PORT = int(os.getenv('FLASK_RUN_PORT', 5000))
 
     # CORS
     CORS_ORIGINS = os.getenv('CORS_ORIGINS', '*')

@@ -21,7 +21,8 @@ export default function DocumentPreview({ document, changes }: DocumentPreviewPr
       // Show changes notification if there are changes
       if (changes) {
         setShowChanges(true)
-        setTimeout(() => setShowChanges(false), 3000)
+        const timeoutId = setTimeout(() => setShowChanges(false), 3000)
+        return () => clearTimeout(timeoutId)
       }
     }
   }, [document, changes])

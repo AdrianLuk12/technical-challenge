@@ -4,7 +4,7 @@ An AI-powered legal document generation system that uses streaming SSE responses
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Python](https://img.shields.io/badge/python-3.13.5-blue.svg)
-![Next.js](https://img.shields.io/badge/next.js-15.1.3-black.svg)
+![Next.js](https://img.shields.io/badge/next.js-15.5.6-black.svg)
 
 ## 🎯 Project Overview
 
@@ -84,7 +84,7 @@ Three intelligent functions:
 - **CORS**: Flask-CORS for cross-origin requests
 
 ### Frontend
-- **Framework**: Next.js 15.1.3 (App Router)
+- **Framework**: Next.js 15.5.6 (App Router)
 - **Language**: TypeScript
 - **Styling**: Tailwind CSS with custom red theme
 - **UI Components**:

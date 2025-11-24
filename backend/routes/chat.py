@@ -73,6 +73,7 @@ def convert_to_serializable(obj: Any, depth: int = 0, max_depth: int = 20, visit
                 return {str(key): convert_to_serializable(obj[key], depth + 1, max_depth, visited)
                         for key in obj.keys()}
             except (TypeError, AttributeError):
+                # Some dict-like objects may not support iteration or key access; fall through to next handler
                 pass
 
         # Handle objects with __dict__ (but avoid infinite recursion)
@@ -83,14 +84,14 @@ def convert_to_serializable(obj: Any, depth: int = 0, max_depth: int = 20, visit
                 if isinstance(obj_dict, dict):
                     return convert_to_serializable(obj_dict, depth + 1, max_depth, visited)
             except (TypeError, AttributeError):
+                # Some objects may not have a serializable __dict__; fall back to string conversion below
                 pass
 
         # Fallback: convert to string
         return str(obj)
-
     finally:
-        # Remove from visited set after processing (for non-circular paths)
-        visited.discard(obj_id)
+        # No cleanup needed; visited set persists for entire traversal
+        pass
 
 
 @chat_bp.route('/health', methods=['GET'])
@@ -169,6 +170,10 @@ def chat():
                     # Convert args to JSON-serializable format
                     func_args = convert_to_serializable(func_call.args)
 
+                    # Validate that func_args is a dict before using
+                    if not isinstance(func_args, dict):
+                        func_args = {}
+
                     # Notify frontend about function call
                     yield create_sse_response('function_call', {
                         'function': func_name,
@@ -220,7 +225,7 @@ def chat():
             yield create_sse_response('done', {'conversation_id': conversation_id})
 
         except Exception as e:
-            error_msg = f"Error: {str(e)}"
+            error_msg = f"Error processing message: {str(e)}. Please try again or check your connection."
             yield create_sse_response('error', {'content': error_msg})
 
     return Response(
