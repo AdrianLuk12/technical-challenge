@@ -89,6 +89,9 @@ def convert_to_serializable(obj: Any, depth: int = 0, max_depth: int = 20, visit
 
         # Fallback: convert to string
         return str(obj)
+    finally:
+        # No cleanup needed; visited set persists for entire traversal
+        pass
 
 
 @chat_bp.route('/health', methods=['GET'])
