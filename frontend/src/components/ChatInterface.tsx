@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { Send, Loader2 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
@@ -34,6 +34,11 @@ export default function ChatInterface({ onDocumentUpdate, onDocumentChanges }: C
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
+  // Refs for batching streaming updates
+  const streamingTextRef = useRef<string>('')
+  const updateTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const assistantMessageIdRef = useRef<string | null>(null)
+
   // Get API URL from environment variable
   const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
 
@@ -44,6 +49,41 @@ export default function ChatInterface({ onDocumentUpdate, onDocumentChanges }: C
   useEffect(() => {
     scrollToBottom()
   }, [messages])
+
+  // Batched update function to prevent excessive re-renders
+  const batchUpdateMessage = useCallback((messageId: string, content: string) => {
+    // Clear any pending timeout
+    if (updateTimeoutRef.current) {
+      clearTimeout(updateTimeoutRef.current)
+    }
+
+    // Schedule update after a short delay to batch multiple chunks
+    updateTimeoutRef.current = setTimeout(() => {
+      setMessages(prev =>
+        prev.map(msg =>
+          msg.id === messageId
+            ? { ...msg, content }
+            : msg
+        )
+      )
+    }, 50) // 50ms debounce - batches multiple chunks together
+  }, [])
+
+  // Force immediate update (for completion)
+  const forceUpdateMessage = useCallback((messageId: string, updates: Partial<ChatMessage>) => {
+    if (updateTimeoutRef.current) {
+      clearTimeout(updateTimeoutRef.current)
+      updateTimeoutRef.current = null
+    }
+
+    setMessages(prev =>
+      prev.map(msg =>
+        msg.id === messageId
+          ? { ...msg, ...updates }
+          : msg
+      )
+    )
+  }, [])
 
   const handleSendMessage = async () => {
     if (!input.trim() || isLoading) return
@@ -61,6 +101,8 @@ export default function ChatInterface({ onDocumentUpdate, onDocumentChanges }: C
 
     // Create assistant message placeholder
     const assistantMessageId = (Date.now() + 1).toString()
+    assistantMessageIdRef.current = assistantMessageId
+
     const assistantMessage: ChatMessage = {
       id: assistantMessageId,
       role: 'assistant',
@@ -69,6 +111,9 @@ export default function ChatInterface({ onDocumentUpdate, onDocumentChanges }: C
       isStreaming: true,
     }
     setMessages(prev => [...prev, assistantMessage])
+
+    // Reset streaming text accumulator
+    streamingTextRef.current = ''
 
     try {
       const response = await fetch(`${API_URL}/chat`, {
@@ -93,8 +138,6 @@ export default function ChatInterface({ onDocumentUpdate, onDocumentChanges }: C
         throw new Error('No reader available')
       }
 
-      let accumulatedText = ''
-
       while (true) {
         const { done, value } = await reader.read()
         if (done) break
@@ -108,14 +151,12 @@ export default function ChatInterface({ onDocumentUpdate, onDocumentChanges }: C
               const data = JSON.parse(line.slice(6))
 
               if (data.type === 'text') {
-                accumulatedText += data.content
-                setMessages(prev =>
-                  prev.map(msg =>
-                    msg.id === assistantMessageId
-                      ? { ...msg, content: accumulatedText }
-                      : msg
-                  )
-                )
+                // Accumulate text in ref (doesn't trigger re-render)
+                streamingTextRef.current += data.content
+
+                // Batch update to state (debounced)
+                batchUpdateMessage(assistantMessageId, streamingTextRef.current)
+
               } else if (data.type === 'document') {
                 onDocumentUpdate(data.content)
                 if (data.changes) {
@@ -124,34 +165,30 @@ export default function ChatInterface({ onDocumentUpdate, onDocumentChanges }: C
               } else if (data.type === 'function_call') {
                 // Show function call info
                 const funcInfo = `\n\n_[Calling function: ${data.function}]_\n\n`
-                accumulatedText += funcInfo
-                setMessages(prev =>
-                  prev.map(msg =>
-                    msg.id === assistantMessageId
-                      ? { ...msg, content: accumulatedText }
-                      : msg
-                  )
-                )
+                streamingTextRef.current += funcInfo
+
+                // Force immediate update for function calls
+                forceUpdateMessage(assistantMessageId, { content: streamingTextRef.current })
+
               } else if (data.type === 'done') {
+                // Force final update with complete content
+                forceUpdateMessage(assistantMessageId, {
+                  content: streamingTextRef.current,
+                  isStreaming: false
+                })
+
                 if (!conversationId && data.conversation_id) {
                   setConversationId(data.conversation_id)
                 }
-                setMessages(prev =>
-                  prev.map(msg =>
-                    msg.id === assistantMessageId
-                      ? { ...msg, isStreaming: false }
-                      : msg
-                  )
-                )
+
               } else if (data.type === 'error') {
-                accumulatedText += `\n\nError: ${data.content}`
-                setMessages(prev =>
-                  prev.map(msg =>
-                    msg.id === assistantMessageId
-                      ? { ...msg, content: accumulatedText, isStreaming: false }
-                      : msg
-                  )
-                )
+                streamingTextRef.current += `\n\nError: ${data.content}`
+
+                // Force immediate update for errors
+                forceUpdateMessage(assistantMessageId, {
+                  content: streamingTextRef.current,
+                  isStreaming: false
+                })
               }
             } catch (e) {
               console.error('Failed to parse SSE data:', e)
@@ -161,19 +198,22 @@ export default function ChatInterface({ onDocumentUpdate, onDocumentChanges }: C
       }
     } catch (error) {
       console.error('Error sending message:', error)
-      setMessages(prev =>
-        prev.map(msg =>
-          msg.id === assistantMessageId
-            ? {
-                ...msg,
-                content: 'Sorry, there was an error processing your request. Please make sure the backend server is running.',
-                isStreaming: false,
-              }
-            : msg
-        )
-      )
+
+      // Clear any pending updates
+      if (updateTimeoutRef.current) {
+        clearTimeout(updateTimeoutRef.current)
+      }
+
+      forceUpdateMessage(assistantMessageId, {
+        content: 'Sorry, there was an error processing your request. Please make sure the backend server is running.',
+        isStreaming: false
+      })
     } finally {
       setIsLoading(false)
+
+      // Clean up refs
+      streamingTextRef.current = ''
+      assistantMessageIdRef.current = null
     }
   }
 
