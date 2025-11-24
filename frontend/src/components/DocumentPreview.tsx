@@ -47,14 +47,15 @@ export default function DocumentPreview({ document, changes }: DocumentPreviewPr
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ duration: 0.5 }}
+          className="flex flex-col items-center"
         >
-          <div className="w-24 h-24 bg-gray-100 rounded-2xl flex items-center justify-center mb-4">
+          <div className="w-24 h-24 bg-gray-100 rounded-2xl flex items-center justify-center mb-4 mx-auto">
             <FileText className="w-12 h-12 text-gray-400" />
           </div>
           <h3 className="text-lg font-semibold text-text-primary mb-2">
             No Document Yet
           </h3>
-          <p className="text-sm text-text-secondary max-w-xs">
+          <p className="text-sm text-text-secondary max-w-xs mx-auto">
             Start a conversation to generate your legal document. The document will appear here as it&apos;s created.
           </p>
         </motion.div>

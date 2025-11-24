@@ -27,15 +27,29 @@ Next.js frontend with SSE streaming client and real-time document preview.
    npm install
    ```
 
-2. Create `.env.local`:
+2. Create `.env.local` file:
    ```bash
    cp .env.local.example .env.local
    ```
 
-3. Start development server:
+3. Configure environment variables in `.env.local`:
+   ```env
+   NEXT_PUBLIC_API_URL=http://localhost:5000
+   ```
+
+   **Important:** Change the URL if your backend runs on a different port or host.
+
+4. Start development server:
    ```bash
    npm run dev
    ```
+
+## Environment Variables
+
+- `NEXT_PUBLIC_API_URL`: Backend API base URL (default: `http://localhost:5000`)
+  - Used for all API requests (/chat, /conversations, etc.)
+  - Must be prefixed with `NEXT_PUBLIC_` to be accessible in browser
+  - Can be changed for production deployment
 
 ## Project Structure
 

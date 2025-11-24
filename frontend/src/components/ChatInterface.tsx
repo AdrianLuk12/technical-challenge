@@ -34,6 +34,9 @@ export default function ChatInterface({ onDocumentUpdate, onDocumentChanges }: C
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
+  // Get API URL from environment variable
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }
@@ -68,7 +71,7 @@ export default function ChatInterface({ onDocumentUpdate, onDocumentChanges }: C
     setMessages(prev => [...prev, assistantMessage])
 
     try {
-      const response = await fetch('http://localhost:5001/chat', {
+      const response = await fetch(`${API_URL}/chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
