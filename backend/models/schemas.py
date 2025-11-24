@@ -52,7 +52,6 @@ Examples:
 - For director appointment: {"director_name": "John Doe", "effective_date": "2024-03-15", "committees": "Audit Committee", "resolution_number": "RES-2024-001"}
 - For NDA: {"party1_name": "Company A", "party2_name": "Company B", "effective_date": "2024-03-15", "term_years": "3"}
 - For employment: {"employee_name": "Jane Smith", "company_name": "Acme Corp", "position": "Senior Engineer", "start_date": "2024-04-01", "salary": "$150,000"}""",
-                            "additionalProperties": true
                         }
                     },
                     "required": ["document_type", "document_data"]
