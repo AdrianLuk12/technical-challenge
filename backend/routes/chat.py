@@ -2,6 +2,7 @@
 Chat API routes with SSE streaming support.
 """
 import json
+from typing import Any
 from flask import Blueprint, Response, request, stream_with_context
 import google.generativeai as genai
 
@@ -17,6 +18,39 @@ chat_bp = Blueprint('chat', __name__)
 
 # Configure Gemini
 genai.configure(api_key=Config.GEMINI_API_KEY)
+
+
+def convert_to_serializable(obj: Any) -> Any:
+    """
+    Recursively convert objects to JSON-serializable format.
+
+    Handles Gemini's MapComposite and other non-serializable objects.
+
+    Args:
+        obj: Object to convert
+
+    Returns:
+        JSON-serializable version of the object
+    """
+    if obj is None or isinstance(obj, (str, int, float, bool)):
+        return obj
+
+    if isinstance(obj, (list, tuple)):
+        return [convert_to_serializable(item) for item in obj]
+
+    if isinstance(obj, dict):
+        return {str(key): convert_to_serializable(value) for key, value in obj.items()}
+
+    # Handle MapComposite and similar objects by converting to dict
+    if hasattr(obj, '__iter__') and hasattr(obj, 'keys'):
+        return {str(key): convert_to_serializable(obj[key]) for key in obj.keys()}
+
+    # Handle other objects with dict representation
+    if hasattr(obj, '__dict__'):
+        return convert_to_serializable(obj.__dict__)
+
+    # Fallback: convert to string
+    return str(obj)
 
 
 @chat_bp.route('/health', methods=['GET'])
@@ -92,7 +126,8 @@ def chat():
             if function_calls:
                 for func_call in function_calls:
                     func_name = func_call.name
-                    func_args = dict(func_call.args)
+                    # Convert args to JSON-serializable format
+                    func_args = convert_to_serializable(func_call.args)
 
                     # Notify frontend about function call
                     yield create_sse_response('function_call', {
