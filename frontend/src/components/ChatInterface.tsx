@@ -41,7 +41,7 @@ export default function ChatInterface({ onDocumentUpdate, onDocumentChanges }: C
   const readerRef = useRef<ReadableStreamDefaultReader<Uint8Array> | null>(null)
 
   // Get API URL from environment variable
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'
 
   // Cleanup effect for timeout on unmount
   useEffect(() => {

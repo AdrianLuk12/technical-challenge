@@ -156,7 +156,7 @@ cd backend
 python app.py
 ```
 
-Backend will run on `http://localhost:5000`
+Backend will run on `http://localhost:5001`
 
 ### Start Frontend Development Server
 

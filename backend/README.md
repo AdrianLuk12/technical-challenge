@@ -64,7 +64,7 @@ backend/
 python app.py
 ```
 
-Server will run on `http://localhost:5000`
+Server will run on `http://localhost:5001`
 
 ## API Endpoints
 
@@ -118,10 +118,10 @@ Edit `prompts/system_prompt.py` and see `PROMPT_ENGINEERING.md` for guidelines.
 
 ```bash
 # Test health endpoint
-curl http://localhost:5000/health
+curl http://localhost:5001/health
 
 # Test chat endpoint (requires frontend or curl with SSE)
-curl -X POST http://localhost:5000/chat \
+curl -X POST http://localhost:5001/chat \
   -H "Content-Type: application/json" \
   -d '{"message": "I need an NDA"}'
 ```

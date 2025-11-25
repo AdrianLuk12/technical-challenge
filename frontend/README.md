@@ -34,7 +34,7 @@ Next.js frontend with SSE streaming client and real-time document preview.
 
 3. Configure environment variables in `.env.local`:
    ```env
-   NEXT_PUBLIC_API_URL=http://localhost:5000
+   NEXT_PUBLIC_API_URL=http://localhost:5001
    ```
 
    **Important:** Change the URL if your backend runs on a different port or host.
@@ -46,7 +46,7 @@ Next.js frontend with SSE streaming client and real-time document preview.
 
 ## Environment Variables
 
-- `NEXT_PUBLIC_API_URL`: Backend API base URL (default: `http://localhost:5000`)
+- `NEXT_PUBLIC_API_URL`: Backend API base URL (default: `http://localhost:5001`)
   - Used for all API requests (/chat, /conversations, etc.)
   - Must be prefixed with `NEXT_PUBLIC_` to be accessible in browser
   - Can be changed for production deployment
@@ -105,7 +105,7 @@ The app uses a custom Tailwind theme inspired by transparently.ai:
 
 ## API Integration
 
-The frontend connects to the Flask backend at `http://localhost:5000`:
+The frontend connects to the Flask backend at `http://localhost:5001`:
 
 - `POST /chat` - Send messages and receive SSE stream
 - `GET /conversations/:id` - Get conversation history
@@ -145,7 +145,7 @@ The frontend connects to the Flask backend at `http://localhost:5000`:
 ### SSE Connection Issues
 
 If streaming doesn't work:
-1. Check backend is running on port 5000
+1. Check backend is running on port 5001
 2. Verify CORS is enabled in Flask
 3. Check browser console for errors
 
