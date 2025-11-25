@@ -17,9 +17,10 @@ interface ChatMessage {
 interface ChatInterfaceProps {
   onDocumentUpdate: (document: string | null, documentDownload?: string | null) => void
   onDocumentChanges: (changes: string | null) => void
+  onResetRef?: (resetFn: () => void) => void
 }
 
-export default function ChatInterface({ onDocumentUpdate, onDocumentChanges }: ChatInterfaceProps) {
+export default function ChatInterface({ onDocumentUpdate, onDocumentChanges, onResetRef }: ChatInterfaceProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: '1',
@@ -269,6 +270,25 @@ export default function ChatInterface({ onDocumentUpdate, onDocumentChanges }: C
       handleSendMessage()
     }
   }
+
+  const resetChat = useCallback(() => {
+    setMessages([
+      {
+        id: Date.now().toString(),
+        role: 'assistant',
+        content: 'Hello! I\'m your legal document assistant. I can help you create various legal documents like Director Appointment Resolutions, Non-Disclosure Agreements, or Employment Agreements. What would you like to create today?',
+        timestamp: new Date(),
+      }
+    ])
+    setInput('')
+    setConversationId(null)
+    streamingTextRef.current = ''
+  }, [])
+
+  // Expose reset function to parent
+  useEffect(() => {
+    onResetRef?.(resetChat)
+  }, [onResetRef, resetChat])
 
   return (
     <div className="flex flex-col h-full">

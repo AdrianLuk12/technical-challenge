@@ -1,15 +1,16 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import ChatInterface from '@/components/ChatInterface'
 import DocumentPreview from '@/components/DocumentPreview'
 import { motion } from 'framer-motion'
-import { FileText, MessageSquare } from 'lucide-react'
+import { FileText, MessageSquare, RotateCcw } from 'lucide-react'
 
 export default function Home() {
   const [currentDocument, setCurrentDocument] = useState<string | null>(null)
   const [downloadDocument, setDownloadDocument] = useState<string | null>(null)
   const [documentChanges, setDocumentChanges] = useState<string | null>(null)
+  const chatResetRef = useRef<(() => void) | null>(null)
 
   const handleDocumentUpdate = (doc: string | null, downloadDoc?: string | null) => {
     setCurrentDocument(doc)
@@ -18,6 +19,13 @@ export default function Home() {
     } else {
       setDownloadDocument(doc)
     }
+  }
+
+  const handleReset = () => {
+    setCurrentDocument(null)
+    setDownloadDocument(null)
+    setDocumentChanges(null)
+    chatResetRef.current?.()
   }
 
   return (
@@ -54,14 +62,25 @@ export default function Home() {
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.5, delay: 0.2 }}
           >
-            <div className="bg-primary px-6 py-4 flex items-center gap-3">
-              <MessageSquare className="w-5 h-5 text-white" />
-              <h2 className="text-lg font-semibold text-white">Chat</h2>
+            <div className="bg-primary px-6 py-4 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <MessageSquare className="w-5 h-5 text-white" />
+                <h2 className="text-lg font-semibold text-white">Chat</h2>
+              </div>
+              <button
+                onClick={handleReset}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm text-white/80 hover:text-white hover:bg-white/10 transition-colors"
+                title="Clear chat and reset"
+              >
+                <RotateCcw className="w-4 h-4" />
+                <span>New Chat</span>
+              </button>
             </div>
             <div className="flex-1 overflow-hidden">
               <ChatInterface
                 onDocumentUpdate={handleDocumentUpdate}
                 onDocumentChanges={setDocumentChanges}
+                onResetRef={(resetFn) => { chatResetRef.current = resetFn }}
               />
             </div>
           </motion.div>
