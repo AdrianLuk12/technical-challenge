@@ -156,22 +156,30 @@ def chat():
             response = chat_session.send_message(user_message, stream=True)
 
             accumulated_text = ""
-            function_calls = []
+            
+            # Loop to handle chained function calls (e.g. get_date -> generate_document)
+            while True:
+                function_calls = []
 
-            # Process streaming response
-            for chunk in response:
-                if chunk.candidates[0].content.parts:
-                    for part in chunk.candidates[0].content.parts:
-                        # Handle function calls
-                        if hasattr(part, 'function_call') and part.function_call:
-                            function_calls.append(part.function_call)
-                        # Handle text
-                        elif hasattr(part, 'text') and part.text:
-                            accumulated_text += part.text
-                            yield create_sse_response('text', {'content': part.text})
+                # Process streaming response
+                for chunk in response:
+                    if chunk.candidates[0].content.parts:
+                        for part in chunk.candidates[0].content.parts:
+                            # Handle function calls
+                            if hasattr(part, 'function_call') and part.function_call:
+                                function_calls.append(part.function_call)
+                            # Handle text
+                            elif hasattr(part, 'text') and part.text:
+                                accumulated_text += part.text
+                                yield create_sse_response('text', {'content': part.text})
 
-            # Handle function calls
-            if function_calls:
+                # If no function calls, we are done with this turn
+                if not function_calls:
+                    break
+
+                # Prepare function responses
+                function_response_parts = []
+
                 for func_call in function_calls:
                     func_name = func_call.name
                     # Convert args to JSON-serializable format
@@ -202,24 +210,21 @@ def chat():
                             'changes': function_result.get('changes')
                         })
 
-                    # Continue conversation with function result
-                    response2 = chat_session.send_message({
-                        'role': 'function',
-                        'parts': [{
-                            'function_response': {
-                                'name': func_name,
-                                'response': function_result
-                            }
-                        }]
-                    }, stream=True)
+                    # Add to response parts
+                    function_response_parts.append({
+                        'function_response': {
+                            'name': func_name,
+                            'response': function_result
+                        }
+                    })
 
-                    # Stream continuation
-                    for chunk in response2:
-                        if chunk.candidates[0].content.parts:
-                            for part in chunk.candidates[0].content.parts:
-                                if hasattr(part, 'text') and part.text:
-                                    accumulated_text += part.text
-                                    yield create_sse_response('text', {'content': part.text})
+                # Send all function results back to the model
+                response = chat_session.send_message({
+                    'role': 'function',
+                    'parts': function_response_parts
+                }, stream=True)
+                
+                # The loop will now process the model's response to these function results
 
             # Store assistant response
             if accumulated_text:

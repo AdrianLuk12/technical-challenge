@@ -52,6 +52,36 @@ export default function ChatInterface({ onDocumentUpdate, onDocumentChanges }: C
     }
   }, [])
 
+  // Auto-focus input on mount and when loading finishes
+  useEffect(() => {
+    if (!isLoading) {
+      textareaRef.current?.focus()
+    }
+  }, [isLoading])
+
+  // Global keydown listener to focus input when typing
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      // Ignore if already focused on an input or textarea
+      if (
+        document.activeElement instanceof HTMLInputElement ||
+        document.activeElement instanceof HTMLTextAreaElement
+      ) {
+        return
+      }
+
+      // Ignore special keys
+      if (e.metaKey || e.ctrlKey || e.altKey) return
+      if (e.key.length > 1) return // Ignore non-character keys like Escape, F1, etc.
+
+      // Focus the textarea
+      textareaRef.current?.focus()
+    }
+
+    window.addEventListener('keydown', handleGlobalKeyDown)
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown)
+  }, [])
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }
@@ -60,23 +90,15 @@ export default function ChatInterface({ onDocumentUpdate, onDocumentChanges }: C
     scrollToBottom()
   }, [messages])
 
-  // Batched update function to prevent excessive re-renders
-  const batchUpdateMessage = useCallback((messageId: string, content: string) => {
-    // Clear any pending timeout
-    if (updateTimeoutRef.current) {
-      clearTimeout(updateTimeoutRef.current)
-    }
-
-    // Schedule update after a short delay to batch multiple chunks
-    updateTimeoutRef.current = setTimeout(() => {
-      setMessages(prev =>
-        prev.map(msg =>
-          msg.id === messageId
-            ? { ...msg, content }
-            : msg
-        )
+  // Direct update function for token-by-token streaming
+  const updateMessageContent = useCallback((messageId: string, content: string) => {
+    setMessages(prev =>
+      prev.map(msg =>
+        msg.id === messageId
+          ? { ...msg, content }
+          : msg
       )
-    }, 50) // 50ms debounce - batches multiple chunks together
+    )
   }, [])
 
   // Force immediate update (for completion)
@@ -167,8 +189,8 @@ export default function ChatInterface({ onDocumentUpdate, onDocumentChanges }: C
                 // Accumulate text in ref (doesn't trigger re-render)
                 streamingTextRef.current += data.content
 
-                // Batch update to state (debounced)
-                batchUpdateMessage(assistantMessageId, streamingTextRef.current)
+                // Update state immediately for token-by-token effect
+                updateMessageContent(assistantMessageId, streamingTextRef.current)
 
               } else if (data.type === 'document') {
                 // Handle PDF document (base64 encoded)

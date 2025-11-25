@@ -13,7 +13,8 @@ class Config:
 
     # Gemini API
     GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
-    GEMINI_MODEL = 'gemini-2.5-flash'
+    # GEMINI_MODEL = 'gemini-2.5-flash'
+    GEMINI_MODEL = 'gemini-3-pro-preview'
 
     # Flask
     FLASK_ENV = os.getenv('FLASK_ENV', 'development')
