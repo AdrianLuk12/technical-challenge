@@ -4,7 +4,7 @@ Handles creation and editing of legal documents with PDF generation.
 """
 import re
 from io import BytesIO
-from typing import Dict, Tuple, Any
+from typing import Dict, Tuple, Any, Optional
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch
@@ -129,7 +129,7 @@ class DocumentService:
         return pdf_bytes
 
     @staticmethod
-    def generate_director_appointment(data: Dict, highlight_field: str = None) -> Tuple[bytes, Dict]:
+    def generate_director_appointment(data: Dict, highlight_field: Optional[str] = None) -> Tuple[bytes, Dict]:
         """
         Generate a director appointment resolution as PDF.
 
@@ -197,7 +197,7 @@ class DocumentService:
         return pdf_bytes, doc_data
 
     @staticmethod
-    def generate_nda(data: Dict, highlight_field: str = None) -> Tuple[bytes, Dict]:
+    def generate_nda(data: Dict, highlight_field: Optional[str] = None) -> Tuple[bytes, Dict]:
         """
         Generate a Non-Disclosure Agreement as PDF.
 
@@ -281,7 +281,7 @@ class DocumentService:
         return pdf_bytes, doc_data
 
     @staticmethod
-    def generate_employment_agreement(data: Dict, highlight_field: str = None) -> Tuple[bytes, Dict]:
+    def generate_employment_agreement(data: Dict, highlight_field: Optional[str] = None) -> Tuple[bytes, Dict]:
         """
         Generate an Employment Agreement as PDF.
 
@@ -374,7 +374,7 @@ class DocumentService:
         return pdf_bytes, doc_data
 
     @staticmethod
-    def generate_custom_document(data: Dict, highlight_field: str = None) -> Tuple[bytes, Dict]:
+    def generate_custom_document(data: Dict, highlight_field: Optional[str] = None) -> Tuple[bytes, Dict]:
         """
         Generate a custom document based on provided data.
         This is a flexible method that can handle various custom document types.
@@ -392,9 +392,34 @@ class DocumentService:
             Tuple of (PDF bytes, document data dictionary)
         """
         title = data.get('title', 'LEGAL DOCUMENT')
-        sections = data.get('sections', [])
+        raw_sections = data.get('sections', [])
         doc_date = data.get('date', '[DATE]')
-        parties = data.get('parties', [])
+        raw_parties = data.get('parties', [])
+        
+        # Ensure sections is a proper list, not a string or proto object
+        if isinstance(raw_sections, str):
+            # If sections is a string, wrap it as a single section
+            sections = [{'heading': 'Content', 'content': raw_sections}]
+        elif isinstance(raw_sections, list):
+            sections = list(raw_sections)
+        else:
+            # Try to convert to list, or wrap in list
+            try:
+                sections = list(raw_sections)
+            except (TypeError, ValueError):
+                sections = [{'heading': 'Content', 'content': str(raw_sections)}]
+        
+        # Ensure parties is a proper list, not a string
+        if isinstance(raw_parties, str):
+            # If parties is a single string, wrap it in a list
+            parties = [raw_parties] if raw_parties else []
+        elif isinstance(raw_parties, list):
+            parties = [str(p) for p in raw_parties]
+        else:
+            try:
+                parties = [str(p) for p in raw_parties]
+            except (TypeError, ValueError):
+                parties = [str(raw_parties)] if raw_parties else []
 
         # Store structured data for editing
         doc_data = {
@@ -425,8 +450,14 @@ class DocumentService:
 
         # Add sections
         for i, section in enumerate(sections, 1):
-            heading = section.get('heading', f'Section {i}')
-            content = section.get('content', '')
+            # Handle section as dict or string
+            if isinstance(section, dict):
+                heading = section.get('heading', f'Section {i}')
+                content = section.get('content', '')
+            else:
+                # Section is a string - use it as content with default heading
+                heading = f'Section {i}'
+                content = str(section)
             
             # Check if this section is being highlighted (by heading name)
             is_highlighted = highlight_field == heading
@@ -436,9 +467,9 @@ class DocumentService:
             # Handle content that might be a list or a string
             if isinstance(content, list):
                 for item in content:
-                    content_blocks.append((item, 'bullet', is_highlighted))
+                    content_blocks.append((str(item), 'bullet', is_highlighted))
             else:
-                content_blocks.append((content, 'normal', is_highlighted))
+                content_blocks.append((str(content), 'normal', is_highlighted))
             content_blocks.append(("", 'normal'))
 
         # Add signature lines
@@ -534,7 +565,7 @@ class DocumentService:
                 f"Error regenerating document of type '{doc_type}' during '{edit_type}' on field '{field_name}': {str(e)}"
             )
     @staticmethod
-    def generate(document_type: str, document_data: Dict, highlight_field: str = None) -> Tuple[bytes, Dict]:
+    def generate(document_type: str, document_data: Dict, highlight_field: Optional[str] = None) -> Tuple[bytes, Dict]:
         """
         Generate a document based on type.
 

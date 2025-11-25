@@ -8,6 +8,8 @@ from datetime import datetime
 from flask import Blueprint, Response, request, stream_with_context
 import google.generativeai as genai
 from google.generativeai.types import GenerationConfig
+from google.protobuf import json_format
+from google.protobuf.message import Message as ProtobufMessage
 
 from config import Config
 from models import FUNCTION_TOOLS
@@ -27,7 +29,7 @@ def convert_to_serializable(obj: Any, depth: int = 0, max_depth: int = 20, visit
     """
     Recursively convert objects to JSON-serializable format.
 
-    Handles Gemini's MapComposite and other non-serializable objects.
+    Handles Gemini's MapComposite, protobuf messages, and other non-serializable objects.
     Prevents infinite recursion with depth limiting and circular reference tracking.
 
     Args:
@@ -60,6 +62,10 @@ def convert_to_serializable(obj: Any, depth: int = 0, max_depth: int = 20, visit
     visited.add(obj_id)
 
     try:
+        # Handle protobuf messages first (before dict-like checks)
+        if isinstance(obj, ProtobufMessage):
+            return json_format.MessageToDict(obj)
+        
         # Handle lists and tuples
         if isinstance(obj, (list, tuple)):
             return [convert_to_serializable(item, depth + 1, max_depth, visited) for item in obj]
@@ -73,8 +79,15 @@ def convert_to_serializable(obj: Any, depth: int = 0, max_depth: int = 20, visit
         # Check for keys() and __getitem__ to identify dict-like objects
         if hasattr(obj, 'keys') and hasattr(obj, '__getitem__') and not isinstance(obj, type):
             try:
-                return {str(key): convert_to_serializable(obj[key], depth + 1, max_depth, visited)
-                        for key in obj.keys()}
+                # First try to convert via dict() which works for MapComposite
+                if hasattr(obj, 'items'):
+                    result = {}
+                    for key, value in obj.items():
+                        result[str(key)] = convert_to_serializable(value, depth + 1, max_depth, visited)
+                    return result
+                else:
+                    return {str(key): convert_to_serializable(obj[key], depth + 1, max_depth, visited)
+                            for key in obj.keys()}
             except (TypeError, AttributeError):
                 # Some dict-like objects may not support iteration or key access; fall through to next handler
                 pass
